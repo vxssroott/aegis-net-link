@@ -59,11 +59,11 @@ export interface Observation<T = unknown> {
   value: T | Unknown;
   confidence: Confidence;
   /** Interface / adapter / tunnel this observation is about, when applicable. */
-  resource?: string;
+  resource?: string | undefined;
   handling: DataHandling[];
-  evidence?: Record<string, unknown>;
+  evidence?: Record<string, unknown> | undefined;
   /** ISO timestamp after which this observation must not be trusted. */
-  expiresAt?: string;
+  expiresAt?: string | undefined;
 }
 
 let counter = 0;
@@ -80,7 +80,7 @@ export function observe<T>(input: {
   method: string;
   value: T | Unknown;
   confidence: Confidence;
-  resource?: string;
+  resource?: string | undefined;
   handling?: DataHandling[];
   evidence?: Record<string, unknown>;
   ttlMs?: number;

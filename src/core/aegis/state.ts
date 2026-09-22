@@ -48,7 +48,7 @@ export interface StateTransition {
   to: AegisState;
   reason: TransitionReason;
   /** Evidence record id that justifies the transition, when one exists. */
-  evidenceId?: string;
+  evidenceId?: string | undefined;
   timestamp: string;
 }
 

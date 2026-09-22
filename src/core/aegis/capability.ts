@@ -138,9 +138,9 @@ export const CAPABILITY_REGISTRY: Readonly<Record<Capability, CapabilityDescript
 export interface CapabilityGrant {
   capability: Capability;
   state: GrantState;
-  decidedAt?: string;
+  decidedAt?: string | undefined;
   /** Who decided: the local user, or a policy import. */
-  decidedBy?: "USER" | "POLICY";
+  decidedBy?: "USER" | "POLICY" | undefined;
 }
 
 export interface CapabilityStorage {
