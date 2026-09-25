@@ -38,37 +38,37 @@ function proof(v: Json, key: string): string | null {
 
 /** Pure mapping — exported for tests. */
 export function normalizeControlPlaneState(state: Json): Observation[] {
-  const identity = (state.identity ?? {}) as Json;
-  const network = (state.network ?? {}) as Json;
-  const exposure = (state.exposure ?? {}) as Json;
-  const verification = (state.verification ?? {}) as Json;
-  const transport = (state.transport ?? {}) as Json;
-  const boundary = (state.boundary ?? {}) as Json;
+  const identity = (state["identity"] ?? {}) as Json;
+  const network = (state["network"] ?? {}) as Json;
+  const exposure = (state["exposure"] ?? {}) as Json;
+  const verification = (state["verification"] ?? {}) as Json;
+  const transport = (state["transport"] ?? {}) as Json;
+  const boundary = (state["boundary"] ?? {}) as Json;
   const bool = (x: unknown) => (typeof x === "boolean" ? x : null);
 
   return [
     cp("SYSTEM", "controlPlane.reachable", true),
-    cp("SYSTEM", "controlPlane.status", state.status),
+    cp("SYSTEM", "controlPlane.status", state["status"]),
     cp("EGRESS", "egress.ipv4", identity.ipv4),
     cp("EGRESS", "egress.ipv6", identity.ipv6),
-    cp("EGRESS", "egress.asn", identity.asn),
-    cp("EGRESS", "egress.provider", identity.provider),
-    cp("LOCATION", "egress.location", identity.location),
-    cp("NETWORK_INTERFACE", "net.interface", network.interface),
+    cp("EGRESS", "egress.asn", identity["asn"]),
+    cp("EGRESS", "egress.provider", identity["provider"]),
+    cp("LOCATION", "egress.location", identity["location"]),
+    cp("NETWORK_INTERFACE", "net.interface", network["interface"]),
     cp("IPV4", "net.localIpv4", network.localIpv4),
-    cp("ROUTE", "net.gateway", network.gateway),
-    cp("DNS", "net.dns", network.dns),
-    cp("ROUTE", "net.route", network.route),
+    cp("ROUTE", "net.gateway", network["gateway"]),
+    cp("DNS", "net.dns", network["dns"]),
+    cp("ROUTE", "net.route", network["route"]),
     cp("IPV4", "boundary.ipv4.inside", bool(exposure.ipv4)),
     cp("IPV6", "boundary.ipv6.inside", bool(exposure.ipv6)),
-    cp("DNS", "boundary.dns.inside", bool(exposure.dns)),
-    cp("ROUTE", "boundary.route.inside", bool(exposure.route)),
-    cp("SOCKET", "boundary.webrtc.inside", bool(exposure.webrtc)),
-    cp("FIREWALL", "boundary.firewall.failClosed", bool(boundary.failClosed)),
-    cp("FIREWALL", "boundary.firewall.directBlocked", bool(boundary.directEgressBlocked)),
-    cp("VPN", "transport.active", (transport.activeProvider ?? transport.ActiveProvider ?? null) as string | null),
-    cp("VPN", "transport.verified", bool(transport.verified ?? transport.Verified)),
-    cp("SYSTEM", "verification.status", verification.status),
+    cp("DNS", "boundary["dns"].inside", bool(exposure["dns"])),
+    cp("ROUTE", "boundary["route"].inside", bool(exposure["route"])),
+    cp("SOCKET", "boundary["webrtc"].inside", bool(exposure["webrtc"])),
+    cp("FIREWALL", "boundary["firewall"].failClosed", bool(boundary["failClosed"])),
+    cp("FIREWALL", "boundary["firewall"].directBlocked", bool(boundary["directEgressBlocked"])),
+    cp("VPN", "transport["active"]", (transport["activeProvider"] ?? transport["ActiveProvider"] ?? null) as string | null),
+    cp("VPN", "transport["verified"]", bool(transport["verified"] ?? transport["Verified"])),
+    cp("SYSTEM", "verification["status"]", verification["status"]),
     ...["externalEndpoint", "routeBinding", "dnsPath", "ipv6Boundary", "provider"].map((k) =>
       cp("SYSTEM", `proof.${k}`, proof(verification, k)),
     ),
