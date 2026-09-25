@@ -152,19 +152,21 @@ function Aegis() {
       );
       const list = Array.isArray(result) ? result : result.events || [];
 
-      setEvents(
-        list
-          .slice()
-          .reverse()
-          .slice(0, 12)
-          .map((item, index) => ({
-            key: item.id || `${item.timestamp}-${index}`,
-            time: item.timestamp
-              ? new Date(item.timestamp).toLocaleTimeString()
-              : new Date().toLocaleTimeString(),
-            message: item.message || item.type || "AEGIS event",
-          })),
-      );
+      const remote = list
+        .slice()
+        .reverse()
+        .slice(0, 12)
+        .map((item, index) => ({
+          key: "cp-" + (item.id || `${item.timestamp}-${index}`),
+          time: item.timestamp
+            ? new Date(item.timestamp).toLocaleTimeString()
+            : new Date().toLocaleTimeString(),
+          message: item.message || item.type || "AEGIS event",
+        }));
+      setEvents((current) => {
+        const local = current.filter((e) => !e.key.startsWith("cp-"));
+        return [...local.slice(0, 6), ...remote].slice(0, 12);
+      });
     } catch {
       /* event stream unavailable — leave existing notices in place */
     }
