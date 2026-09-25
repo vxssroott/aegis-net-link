@@ -10,6 +10,10 @@ import {
   type AegisProvider,
   type AegisState,
 } from "@/lib/aegis-control-plane";
+import { AegisCoreRuntime, type RuntimeSnapshot } from "@/core/aegis/runtime";
+import { connectivitySource, controlPlaneSource } from "@/core/aegis/sources";
+import { CapabilityManager, localCapabilityStorage } from "@/core/aegis/capability";
+import "@/styles/aegis.css";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -113,13 +117,13 @@ function Aegis() {
   const [toastMessage, setToastMessage] = useState("");
   const [apiBase, setApiBaseValue] = useState("");
 
+  const [snapshot, setSnapshot] = useState<RuntimeSnapshot | null>(null);
+  const runtimeRef = useRef<AegisCoreRuntime | null>(null);
   const busyRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isProtected =
-    state?.transport?.verified === true ||
-    state?.verification?.status === "VERIFIED" ||
-    state?.status === "PROTECTED";
+  // Only the AEGIS core runtime decides PROTECTED — from policy + verification evidence.
+  const isProtected = snapshot?.state === "PROTECTED";
 
   const toast = useCallback((message: string) => {
     setToastMessage(message);
@@ -148,62 +152,75 @@ function Aegis() {
       );
       const list = Array.isArray(result) ? result : result.events || [];
 
-      setEvents(
-        list
-          .slice()
-          .reverse()
-          .slice(0, 12)
-          .map((item, index) => ({
-            key: item.id || `${item.timestamp}-${index}`,
-            time: item.timestamp
-              ? new Date(item.timestamp).toLocaleTimeString()
-              : new Date().toLocaleTimeString(),
-            message: item.message || item.type || "AEGIS event",
-          })),
-      );
+      const remote = list
+        .slice()
+        .reverse()
+        .slice(0, 12)
+        .map((item, index) => ({
+          key: "cp-" + (item.id || `${item.timestamp}-${index}`),
+          time: item.timestamp
+            ? new Date(item.timestamp).toLocaleTimeString()
+            : new Date().toLocaleTimeString(),
+          message: item.message || item.type || "AEGIS event",
+        }));
+      setEvents((current) => {
+        const local = current.filter((e) => !e.key.startsWith("cp-"));
+        return [...local.slice(0, 6), ...remote].slice(0, 12);
+      });
     } catch {
       /* event stream unavailable — leave existing notices in place */
     }
   }, []);
 
-  const refreshState = useCallback(async () => {
-    try {
-      const next = await aegisApi<AegisState>(AEGIS_ENDPOINTS.state);
-      setState(next);
-
-      const nowProtected =
-        next.transport?.verified === true ||
-        next.verification?.status === "VERIFIED" ||
-        next.status === "PROTECTED";
-
-      setHeroState(nowProtected ? "PROTECTED" : next.status || "OBSERVING");
-      setConnectionStatus(nowProtected ? "PROTECTED" : next.status || "OBSERVING");
-      setStatusMode(nowProtected ? "protected" : "normal");
-
-      if (Array.isArray(next.providers)) setProviders(next.providers);
-
-      try {
-        const result = await aegisApi<{ providers?: AegisProvider[] } | AegisProvider[]>(
-          AEGIS_ENDPOINTS.providers,
-        );
-        setProviders(Array.isArray(result) ? result : result.providers || []);
-      } catch {
-        /* provider endpoint unavailable */
+  const getRuntime = useCallback(() => {
+    if (!runtimeRef.current) {
+      const capabilities = new CapabilityManager(localCapabilityStorage());
+      if (capabilities.state("NETWORK_STATE_OBSERVATION") === "NOT_REQUESTED") {
+        // Observing the local control plane is the purpose of this surface.
+        capabilities.set("NETWORK_STATE_OBSERVATION", "GRANTED", "POLICY");
       }
-
-      await loadEvents();
-    } catch (error) {
-      setConnectionStatus("BACKEND OFFLINE");
-      setStatusMode("danger");
-      setHeroState("OFFLINE");
-      setState(null);
-      addNotice(
-        (error as Error).name === "AbortError"
-          ? "AEGIS control plane request timed out."
-          : "Unable to reach AEGIS control plane.",
+      const runtime = new AegisCoreRuntime(
+        [
+          connectivitySource(() => navigator.onLine),
+          controlPlaneSource(async () => {
+            try {
+              const next = await aegisApi<AegisState>(AEGIS_ENDPOINTS.state);
+              setState(next);
+              if (Array.isArray(next.providers)) setProviders(next.providers);
+              return next as unknown as Record<string, unknown>;
+            } catch (error) {
+              setState(null);
+              throw error;
+            }
+          }),
+        ],
+        capabilities,
       );
+      runtime.events.subscribe((event) => addNotice(event.message));
+      runtimeRef.current = runtime;
     }
-  }, [addNotice, loadEvents]);
+    return runtimeRef.current;
+  }, [addNotice]);
+
+  const refreshState = useCallback(async () => {
+    const snap = await getRuntime().cycle();
+    setSnapshot(snap);
+    setHeroState(snap.state);
+    setConnectionStatus(snap.controlPlaneReachable ? snap.state : "BACKEND OFFLINE");
+    setStatusMode(
+      snap.state === "PROTECTED" ? "protected" : snap.state === "OFFLINE" || snap.state === "EXPOSED" ? "danger" : "normal",
+    );
+    if (!snap.controlPlaneReachable) return;
+    try {
+      const result = await aegisApi<{ providers?: AegisProvider[] } | AegisProvider[]>(
+        AEGIS_ENDPOINTS.providers,
+      );
+      setProviders(Array.isArray(result) ? result : result.providers || []);
+    } catch {
+      /* provider endpoint unavailable */
+    }
+    await loadEvents();
+  }, [getRuntime, loadEvents]);
 
   const runOperation = useCallback(
     async (endpoint: string, payload: unknown, message: string) => {

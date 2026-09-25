@@ -92,3 +92,39 @@ export function projectBoundary(observations: Observation[]): PrivacyBoundary {
   boundary.derivedFrom = observations.map((o) => o.id);
   return boundary;
 }
+
+/* ---------------------------------------------------------------- keyed projection */
+
+type Tri = "YES" | "NO" | "UNKNOWN";
+
+function tri(observations: Observation[], key: string): Tri {
+  const o = observations.find((x) => x.key === key);
+  if (!o || typeof o.value !== "boolean") return "UNKNOWN";
+  return o.value ? "YES" : "NO";
+}
+
+/**
+ * Keyed projection used by the runtime. Only boolean observations with a
+ * known value move a field away from UNKNOWN.
+ */
+export function projectBoundaryFrom(observations: Observation[]): PrivacyBoundary {
+  const b = emptyBoundary();
+  b.derivedFrom = observations.map((o) => o.id);
+  b.ipv4.insideBoundary = tri(observations, "boundary.ipv4.inside");
+  b.ipv6.insideBoundary = tri(observations, "boundary.ipv6.inside");
+  b.dns.insideBoundary = tri(observations, "boundary.dns.inside");
+  const fc = tri(observations, "boundary.firewall.failClosed");
+  b.firewall.failClosed = fc === "YES" ? "ENABLED" : fc === "NO" ? "DISABLED" : "UNKNOWN";
+  b.firewall.directEgressBlocked = tri(observations, "boundary.firewall.directBlocked");
+  const verified = tri(observations, "transport.verified");
+  const active = observations.find((o) => o.key === "transport.active");
+  if (active && typeof active.value === "string") {
+    b.transports.push({
+      id: active.value,
+      kind: "NONE",
+      provider: active.value,
+      assurance: verified === "YES" ? "VERIFIED" : "CONNECTED",
+    });
+  }
+  return b;
+}
