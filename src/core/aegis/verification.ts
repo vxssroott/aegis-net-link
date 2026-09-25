@@ -151,3 +151,46 @@ export function defaultChecks(): VerificationCheck[] {
     ),
   ];
 }
+
+/**
+ * Check that adopts a proof reported by the local AEGIS control plane
+ * (observation key `proof.<target>`). PASS -> VERIFIED, FAIL -> FAILED,
+ * anything else -> INCONCLUSIVE. The browser performs no test itself.
+ */
+export function controlPlaneProofCheck(
+  id: string,
+  target: VerificationTarget,
+  proofKey: string,
+): VerificationCheck {
+  const method = `control-plane proof: ${proofKey}`;
+  return {
+    id,
+    target,
+    method,
+    run: async ({ observations }) => {
+      const o = observations.get<string>(`proof.${proofKey}`);
+      const raw = o && typeof o.value === "string" ? o.value.toUpperCase() : undefined;
+      const status: VerificationStatus =
+        raw === "PASS" ? "VERIFIED" : raw === "FAIL" ? "FAILED" : "INCONCLUSIVE";
+      return {
+        checkId: id,
+        target,
+        status,
+        reason: raw ? `Control plane reported ${raw}` : "No proof reported by control plane",
+        method,
+        observations: o ? [o] : [],
+        timestamp: new Date().toISOString(),
+      };
+    },
+  };
+}
+
+export function controlPlaneChecks(): VerificationCheck[] {
+  return [
+    controlPlaneProofCheck("check.external-endpoint", "EXTERNAL_ENDPOINT", "externalEndpoint"),
+    controlPlaneProofCheck("check.route-binding", "ROUTE_BINDING", "routeBinding"),
+    controlPlaneProofCheck("check.dns-path", "DNS_PATH", "dnsPath"),
+    controlPlaneProofCheck("check.ipv6-boundary", "IPV6_BOUNDARY", "ipv6Boundary"),
+    controlPlaneProofCheck("check.transport-provider", "TRANSPORT_PROVIDER", "provider"),
+  ];
+}
