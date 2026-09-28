@@ -66,7 +66,11 @@ export function normalizeControlPlaneState(state: Json): Observation[] {
     cp("SOCKET", "boundary.webrtc.inside", bool(exposure["webrtc"])),
     cp("FIREWALL", "boundary.firewall.failClosed", bool(boundary["failClosed"])),
     cp("FIREWALL", "boundary.firewall.directBlocked", bool(boundary["directEgressBlocked"])),
-    cp("VPN", "transport.active", (transport["activeProvider"] ?? transport["ActiveProvider"] ?? null) as string | null),
+    cp(
+      "VPN",
+      "transport.active",
+      (transport["activeProvider"] ?? transport["ActiveProvider"] ?? transport["activeId"] ?? null) as string | null,
+    ),
     cp("VPN", "transport.verified", bool(transport["verified"] ?? transport["Verified"])),
     cp("SYSTEM", "verification.status", verification["status"]),
     ...["externalEndpoint", "routeBinding", "dnsPath", "ipv6Boundary", "provider"].map((k) =>
