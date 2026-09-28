@@ -357,7 +357,19 @@ function Get-AegisUiNetworkState {
             verified = $transportVerified
             since    = Get-Prop $state 'Timestamp'
         }
-        boundary  = $boundary
+        boundary  = $(
+            # Read-only observation of the AEGIS firewall rule group (no changes made).
+            $fw = $null
+            if (Get-Command Get-NetFirewallRule -ErrorAction SilentlyContinue) {
+                $fw = @(Invoke-AegisSafely { Get-NetFirewallRule -Group 'AEGIS' -ErrorAction Stop })
+            }
+            $block = @($fw | Where-Object { $_ -and "$($_.Enabled)" -eq 'True' -and "$($_.Direction)" -eq 'Outbound' -and "$($_.Action)" -eq 'Block' })
+            [pscustomobject]@{
+                policy              = $boundary
+                failClosed          = $(if ($null -eq $fw) { $null } else { $block.Count -gt 0 })
+                directEgressBlocked = $(if ($null -eq $fw) { $null } else { $block.Count -gt 0 })
+            }
+        )
         leaks     = $leaks
         providers = $providers
         timestamp = (Get-Date).ToUniversalTime().ToString('o')
