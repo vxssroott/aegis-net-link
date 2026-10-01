@@ -115,3 +115,46 @@ export interface AegisState {
   transport?: { state?: string; verified?: boolean; activeId?: string | null };
   providers?: AegisProvider[];
 }
+
+/* ------------------------------------------------------------ discovery */
+
+/**
+ * Agent contract shared by every platform agent (Windows PowerShell control
+ * plane today; future Android VpnService / iOS NetworkExtension agents). Any
+ * agent exposing these endpoints on a loopback address is discovered and
+ * driven identically — same states, same telemetry shape (AegisState).
+ */
+export const AGENT_CANDIDATES = [
+  "http://127.0.0.1:8787",
+  "http://localhost:8787",
+  "http://[::1]:8787",
+] as const;
+
+async function probe(base: string, ms = 2500): Promise<boolean> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const r = await fetch(base.replace(/\/+$/, "") + AEGIS_ENDPOINTS.state, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    return r.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/** Finds a running local AEGIS agent. Returns its base URL, or null. */
+export async function discoverAgent(): Promise<string | null> {
+  const saved = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+  const candidates = [...new Set([saved, ...AGENT_CANDIDATES].filter(Boolean) as string[])];
+  for (const base of candidates) {
+    if (await probe(base)) {
+      setApiBase(base);
+      return base;
+    }
+  }
+  return null;
+}

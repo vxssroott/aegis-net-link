@@ -352,3 +352,21 @@ button{cursor:pointer}
     flex-direction:column;
   }
 }
+
+/* Touch / small-screen additions — same visual language, larger hit targets. */
+.advanced{margin-top:14px}
+.advanced summary{font-size:11px;letter-spacing:2px;color:var(--muted);cursor:pointer;padding:10px 0;list-style:none}
+.advanced summary::-webkit-details-marker{display:none}
+.advanced .config{margin-top:4px}
+.hero-step{font:11px ui-monospace,monospace;color:var(--blue);min-height:16px;margin-top:6px;letter-spacing:1px}
+.actions{grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media(hover:none){.connect:hover{transform:none}}
+@media(max-width:620px){
+  .app{padding:14px 12px calc(90px + env(safe-area-inset-bottom))}
+  .action{min-height:48px}
+  .config input,.config button{min-height:46px}
+  .row{flex-wrap:wrap}
+  .value{text-align:left;flex:1 1 100%}
+  .connect{width:170px;height:170px}
+}
