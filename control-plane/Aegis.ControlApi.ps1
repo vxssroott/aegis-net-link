@@ -481,6 +481,7 @@ function Write-Json {
     $Context.Response.ContentType = 'application/json; charset=utf-8'
     $Context.Response.Headers['Access-Control-Allow-Origin'] = ($AllowOrigin -join ',')
     $Context.Response.Headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept'
+    $Context.Response.Headers['Access-Control-Allow-Private-Network'] = 'true'
     $Context.Response.Headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     $Context.Response.Headers['Cache-Control'] = 'no-store'
     $Context.Response.ContentLength64 = $bytes.Length
