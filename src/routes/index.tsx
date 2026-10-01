@@ -222,6 +222,16 @@ function Aegis() {
     await loadEvents();
   }, [getRuntime, loadEvents]);
 
+  const findAgent = useCallback(async () => {
+    setStep("LOCATING AEGIS AGENT…");
+    const base = await discoverAgent();
+    setAgentBase(base);
+    if (base) setApiBaseValue(base);
+    setStep(base ? "" : "AEGIS AGENT NOT RUNNING ON THIS DEVICE");
+    await refreshState();
+    return base;
+  }, [refreshState]);
+
   const runOperation = useCallback(
     async (endpoint: string, payload: unknown, message: string) => {
       if (busyRef.current) return;
@@ -242,23 +252,43 @@ function Aegis() {
       setStatusMode("normal");
       addNotice(message);
 
+      // While the agent works, follow the steps it reports (status + events).
+      const poll = setInterval(async () => {
+        try {
+          const s = await aegisApi<AegisState>(AEGIS_ENDPOINTS.state);
+          setState(s);
+          if (s.status) setStep(`AGENT: ${s.status}`);
+          await loadEvents();
+        } catch {
+          /* agent busy */
+        }
+      }, 1500);
+
       try {
+        if (!snapshotRef.current?.controlPlaneReachable) {
+          const base = await discoverAgent();
+          setAgentBase(base);
+          if (!base) throw new Error("AEGIS agent not running on this device");
+        }
+        setStep("AGENT: INITIALIZING");
         await aegisApi(endpoint, {
           method: "POST",
           body: JSON.stringify(payload || {}),
         });
+        setStep("AGENT: VERIFYING RESULTING STATE");
         toast("AEGIS operation accepted");
-        await refreshState();
       } catch (error) {
         addNotice("AEGIS operation failed: " + (error as Error).message);
         toast("AEGIS operation failed");
-        await refreshState();
       } finally {
+        clearInterval(poll);
+        await refreshState();
+        setStep("");
         busyRef.current = false;
         setBusy(false);
       }
     },
-    [addNotice, refreshState, toast],
+    [addNotice, refreshState, toast, loadEvents],
   );
 
   function toggleProtection() {
@@ -269,9 +299,11 @@ function Aegis() {
         "Protection boundary release requested.",
       );
     } else {
+      // One tap: the agent initializes, establishes transport, configures
+      // DNS/route/firewall, verifies and collects telemetry.
       runOperation(
         AEGIS_ENDPOINTS.establish,
-        { operation: "EstablishTransport", verifyBeforeBind: true },
+        { operation: "EstablishTransport", verifyBeforeBind: true, autonomous: true },
         "Transport establishment requested.",
       );
     }
@@ -293,17 +325,20 @@ function Aegis() {
     }
     setApiBase(value);
     setApiBaseValue(value);
+    setAgentBase(value);
     toast("AEGIS API endpoint saved");
     refreshState();
   }
 
   useEffect(() => {
+    if (startedRef.current) return; // StrictMode double-mount guard
+    startedRef.current = true;
     setApiBaseValue(getApiBase());
     addNotice("AEGIS interface initialized.");
-    addNotice("Waiting for control plane...");
-    refreshState();
-
-    const interval = setInterval(refreshState, 15000);
+    void findAgent();
+    const interval = setInterval(() => {
+      if (!busyRef.current) void refreshState();
+    }, 15000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -312,6 +347,9 @@ function Aegis() {
   const network = state?.network || {};
   const exposure = state?.exposure || {};
   const verification = (state?.verification || {}) as Record<string, unknown>;
+  const boundaryInfo = (state as unknown as { boundary?: { failClosed?: boolean | null } } | null)?.boundary;
+  const failClosedText =
+    boundaryInfo?.failClosed === true ? "ENABLED" : boundaryInfo?.failClosed === false ? "FAIL: DISABLED" : "UNKNOWN";
 
   return (
     <div className="app">
@@ -338,6 +376,8 @@ function Aegis() {
           <div className="hero-ip">
             {state ? text(identity.ipv4 ?? "identity unavailable") : "discovering external identity..."}
           </div>
+
+          <div className="hero-step">{step}</div>
 
           <button
             className={"connect" + (isProtected ? " active" : "")}
@@ -541,7 +581,7 @@ function Aegis() {
 
             <div className="row">
               <span className="label">Fail closed</span>
-              <span className="value good">ENABLED</span>
+              <span className={resultClass(failClosedText)}>{failClosedText}</span>
             </div>
 
             <div className="row">
@@ -581,18 +621,22 @@ function Aegis() {
           </div>
         </section>
 
-        {/* BACKEND CONFIG */}
-        <section className="config">
-          <input
-            type="url"
-            spellCheck={false}
-            placeholder="http://127.0.0.1:8787"
-            value={apiBase}
-            onChange={(event) => setApiBaseValue(event.target.value)}
-          />
+        {/* BACKEND CONFIG — advanced; the agent is discovered automatically */}
+        <details className="advanced">
+          <summary>ADVANCED · AGENT {agentBase ? `@ ${agentBase}` : "NOT FOUND"}</summary>
+          <section className="config">
+            <input
+              type="url"
+              spellCheck={false}
+              placeholder="http://127.0.0.1:8787"
+              value={apiBase}
+              onChange={(event) => setApiBaseValue(event.target.value)}
+            />
 
-          <button onClick={saveApiBase}>SAVE API</button>
-        </section>
+            <button onClick={saveApiBase}>SAVE API</button>
+            <button onClick={() => void findAgent()}>DISCOVER</button>
+          </section>
+        </details>
       </main>
 
       <div className="toast" style={{ display: toastMessage ? "block" : "none" }}>
