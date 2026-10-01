@@ -1,15 +1,12 @@
 # AEGIS Net Link
 
 <p align="center">
-  <a href="https://aegis-net-link.lovable.app" target="_blank" rel="noreferrer">
-    <img src="https://img.shields.io/badge/Live-Demo-0ea5e9?style=for-the-badge&logo=globe&logoColor=white" alt="Live demo" />
+  <a href="https://github.com/vxssroott/aegis-net-link" target="_blank" rel="noreferrer">
+    <img src="https://img.shields.io/github/license/vxssroott/aegis-net-link?style=for-the-badge" alt="License" />
   </a>
-  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19" />
-  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/TanStack-Start-FF6B6B?style=for-the-badge&logo=tanstack&logoColor=white" alt="TanStack Start" />
-  <img src="https://img.shields.io/badge/PowerShell-7-5391FE?style=for-the-badge&logo=powershell&logoColor=white" alt="PowerShell" />
-  <img src="https://img.shields.io/badge/Lovable-Connected-FF5A5F?style=for-the-badge&logo=lovable&logoColor=white" alt="Lovable" />
+  <a href="https://github.com/vxssroott/aegis-net-link/security" target="_blank" rel="noreferrer">
+    <img src="https://img.shields.io/badge/Security-Policy-8A2BE2?style=for-the-badge&logo=shield&logoColor=white" alt="Security" />
+  </a>
 </p>
 
 A modern, browser-based control surface for the AEGIS privacy architecture. This project does not replace the backend — it connects a real UI to the authoritative AEGIS control plane and exposes live network state, transport verification, provider telemetry, and event data from the running agent.
