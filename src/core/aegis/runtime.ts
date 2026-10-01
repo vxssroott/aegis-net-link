@@ -54,9 +54,15 @@ export function decide(input: {
     return { state: "OFFLINE", rationale: "Local AEGIS control plane is unreachable." };
 
   const op = (input.controlPlaneStatus ?? "").toUpperCase();
-  if (op === "ESTABLISHING" || op === "ROTATING") return { state: "CONNECTING", rationale: `Control plane: ${op}.` };
-  if (op === "RECOVERING") return { state: "RECOVERING", rationale: "Control plane: RECOVERING." };
-  if (op === "VERIFYING") return { state: "VERIFYING", rationale: "Control plane: VERIFYING." };
+  // Agent progress states (Windows control plane + mobile agent protocol).
+  if (["ESTABLISHING", "ROTATING", "CONNECTING", "INITIALIZING", "PROTECTING"].includes(op))
+    return { state: "CONNECTING", rationale: `Agent: ${op}.` };
+  if (op === "RECOVERING") return { state: "RECOVERING", rationale: "Agent: RECOVERING." };
+  if (op === "VERIFYING") return { state: "VERIFYING", rationale: "Agent: VERIFYING." };
+  if (op === "ERROR" || op === "FAILED" || op === "UNPROTECTED")
+    return input.transportActive
+      ? { state: "DEGRADED", rationale: `Agent reports ${op}.` }
+      : { state: "EXPOSED", rationale: `Agent reports ${op}.` };
 
   const failed = input.results.filter((r) => r.status === "FAILED");
   const policyFail = input.policy.results.filter((r) => r.status === "FAIL");
