@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Every platform agent (Windows control plane, future Android/iOS agents) exposes the same loopback HTTP endpoints and AegisState shape; the UI auto-discovers it — why: one UI and state model across platforms.
