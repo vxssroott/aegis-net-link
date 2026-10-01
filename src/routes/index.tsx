@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AEGIS_ENDPOINTS,
   aegisApi,
+  discoverAgent,
   getApiBase,
   setApiBase,
   type AegisEvent,
@@ -120,6 +121,10 @@ function Aegis() {
   const [snapshot, setSnapshot] = useState<RuntimeSnapshot | null>(null);
   const runtimeRef = useRef<AegisCoreRuntime | null>(null);
   const busyRef = useRef(false);
+  const startedRef = useRef(false);
+  const snapshotRef = useRef<RuntimeSnapshot | null>(null);
+  const [step, setStep] = useState("");
+  const [agentBase, setAgentBase] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Only the AEGIS core runtime decides PROTECTED — from policy + verification evidence.
@@ -205,6 +210,7 @@ function Aegis() {
   const refreshState = useCallback(async () => {
     const snap = await getRuntime().cycle();
     setSnapshot(snap);
+    snapshotRef.current = snap;
     setHeroState(snap.state);
     setConnectionStatus(snap.controlPlaneReachable ? snap.state : "BACKEND OFFLINE");
     setStatusMode(
@@ -331,11 +337,13 @@ function Aegis() {
   }
 
   useEffect(() => {
-    if (startedRef.current) return; // StrictMode double-mount guard
-    startedRef.current = true;
-    setApiBaseValue(getApiBase());
-    addNotice("AEGIS interface initialized.");
-    void findAgent();
+    if (!startedRef.current) {
+      // StrictMode double-mount guard: initialize once.
+      startedRef.current = true;
+      setApiBaseValue(getApiBase());
+      addNotice("AEGIS interface initialized.");
+      void findAgent();
+    }
     const interval = setInterval(() => {
       if (!busyRef.current) void refreshState();
     }, 15000);
