@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/vxssroott/aegis-net-link/blob/main/LICENSE" target="_blank" rel="noreferrer">
-    <img src="https://img.shields.io/github/license/vxssroott/aegis-net-link?style=for-the-badge" alt="License: MIT" />
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" />
   </a>
   <a href="https://github.com/vxssroott/aegis-net-link/security" target="_blank" rel="noreferrer">
     <img src="https://img.shields.io/badge/Security-Policy-8A2BE2?style=for-the-badge&logo=shield&logoColor=white" alt="Security" />
