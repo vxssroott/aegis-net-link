@@ -1,288 +1,200 @@
-# Aegis Connect
-
-AEGIS — Existing Backend Integration
-
-Use the existing AEGIS repository as the source of truth:
-
-https://github.com/vxssroott/AEGIS
-
-Do NOT create a new backend architecture unrelated to this repository.
-
-Do NOT mock the backend.
-
-Do NOT simulate network state.
-
-Do NOT create fake transport providers.
-
-Do NOT redesign the supplied UI.
-
-The objective is to connect the existing AEGIS UI to the existing AEGIS control-plane architecture.
-
-Existing AEGIS architecture
-
-The repository contains the network/control contracts and provider implementations that the frontend must ultimately communicate with.
-
-Relevant contracts include:
-
-src/Network/TransportProviderContract.ps1
-src/Network/TransportProviderRegistry.ps1
-src/Network/PlatformContract.ps1
-src/Network/AndroidTransportContract.ps1
-src/Network/MobileProviderCapabilities.ps1
-src/Network/AegisUiControlPlaneContract.ps1
-
-Existing transport providers include:
-
-Providers/WireGuardProvider.ps1
-Providers/OpenVpnProvider.ps1
-Providers/TorProvider.ps1
-Providers/Socks5Provider.ps1
-Providers/HttpConnectProvider.ps1
-
-Use these existing abstractions.
-
-Do not replace them with a new provider implementation merely to make the UI work.
-
-UI → AEGIS control-plane contract
-
-The existing UI should communicate with the AEGIS control plane through these operations:
-
-GET /network/state
-
-GET /transport/providers
-
-POST /transport/establish
-
-POST /transport/verify
-
-POST /transport/rotate
-
-POST /transport/recover
-
-GET /events
-
-These are the control-plane operations the UI needs.
-
-If the repository already exposes these operations through another transport mechanism, adapt the frontend integration to the actual implementation rather than inventing duplicate functionality.
-
-Network state
-
-The UI's:
-
-Public Identity
-
-Network Path
-
-Network Exposure
-
-Verification Fabric
-
-Transport Fabric
-
-Network Boundary status
-
-must be populated from actual AEGIS state.
-
-Never hardcode these values.
-
-Never generate placeholder values that look real.
-
-Never display PROTECTED simply because a button was clicked.
-
-The backend/control plane is authoritative.
-
-CONNECT
-
-When the user presses CONNECT:
-
-Frontend
-→ AEGIS control plane
-→ transport establishment
-→ actual state acquisition
-→ verification
-→ resulting state returned to frontend
-
-The UI should transition through the actual operation state rather than immediately displaying PROTECTED.
-
-DISCONNECT / RECOVERY
-
-Use the existing AEGIS recovery/control mechanisms.
-
-Do not implement a fake browser-side disconnect mechanism.
-
-Privileged network operations must remain on the AEGIS backend/control plane.
-
-VERIFY
-
-Verification must be an actual AEGIS verification operation.
-
-The UI must reflect the result returned by:
-
-POST /transport/verify
-
-A failed or inconclusive verification must NOT produce a PROTECTED UI state.
-
-ROTATE
-
-The existing ROTATE control must invoke:
-
-POST /transport/rotate
-
-and then reconcile the resulting network state.
-
-Do not merely change displayed provider/IP information.
-
-EVENTS
-
-Connect the Event Stream to:
-
-GET /events
-
-or the repository's actual event-stream implementation if it uses another transport.
-
-Events displayed in the UI must originate from AEGIS operations.
-
-Do not generate fake activity merely to make the dashboard look alive.
-
-Providers
-
-The Transport Fabric UI must reflect the providers actually registered by:
-
-src/Network/TransportProviderRegistry.ps1
-
-including the existing provider implementations.
-
-Do not invent additional providers.
-
-UI preservation — CRITICAL
-
-The supplied AEGIS HTML/CSS is the visual specification.
-
-Preserve it.
-
-Do not redesign it.
-
-Do not replace it with a generated dashboard.
-
-Do not add:
-
-generic SaaS dashboard styling
-
-excessive cards
-
-gradients
-
-glassmorphism
-
-decorative AI graphics
-
-unnecessary sidebars
-
-new navigation systems
-
-generic charts
-
-redesigned typography
-
-redesigned spacing
-
-redesigned controls
-
-The existing AEGIS interface should remain visually recognizable as the same interface.
-
-Your job is to make the existing interface functional.
-
-Backend boundary
-
-The browser must NOT directly perform privileged system/network operations.
-
-The browser communicates with the AEGIS control-plane API.
-
-The AEGIS control plane communicates with the existing AEGIS network/platform/provider abstractions.
-
-Architecture:
+# AEGIS Net Link
+
+<p align="center">
+  <a href="https://aegis-net-link.lovable.app" target="_blank" rel="noreferrer">
+    <img src="https://img.shields.io/badge/Live-Demo-0ea5e9?style=for-the-badge&logo=globe&logoColor=white" alt="Live demo" />
+  </a>
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/TanStack-Start-FF6B6B?style=for-the-badge&logo=tanstack&logoColor=white" alt="TanStack Start" />
+  <img src="https://img.shields.io/badge/PowerShell-7-5391FE?style=for-the-badge&logo=powershell&logoColor=white" alt="PowerShell" />
+  <img src="https://img.shields.io/badge/Lovable-Connected-FF5A5F?style=for-the-badge&logo=lovable&logoColor=white" alt="Lovable" />
+</p>
+
+A modern, browser-based control surface for the AEGIS privacy architecture. This project does not replace the backend — it connects a real UI to the authoritative AEGIS control plane and exposes live network state, transport verification, provider telemetry, and event data from the running agent.
+
+## Why this project exists
+
+AEGIS is a privacy and network-boundary system with a real backend/control-plane contract. This repository provides the frontend experience that consumes that contract:
+
+- observes network identity and boundary status
+- displays transport provider health and verification evidence
+- issues actual control-plane operations such as establish, verify, rotate, and recover
+- auto-discovers the local AEGIS agent and binds to the correct loopback API endpoint
+- keeps the UI faithful to the existing AEGIS design instead of inventing a separate dashboard pattern
+
+At a high level, the flow is:
 
 Browser UI
-↓
-AEGIS Control API
-↓
-AegisUiControlPlaneContract
-↓
-Network / Platform Contracts
-↓
-TransportProviderRegistry
-↓
-WireGuard / OpenVPN / Tor / SOCKS5 / HTTP CONNECT
-↓
-Actual platform/network operations
+  -> AEGIS Control API
+  -> AegisUiControlPlaneContract
+  -> Existing AEGIS network/platform/provider abstractions
+  -> Actual transport and verification operations
 
-Do not bypass this architecture.
+## Current status
 
-State model
+This repo is an operational front-end for the AEGIS control plane, built with:
 
-Preserve the AEGIS operational principle:
+- React 19 + TypeScript
+- Vite + TanStack Start
+- structured AEGIS runtime and policy logic in `src/core/aegis`
+- live backend client in `src/lib/aegis-control-plane.ts`
+- a preserved AEGIS dashboard experience in `src/routes/index.tsx`
 
-Observe
-→ Establish actual state
-→ Verify
-→ Decide
-→ Enforce
-→ Act
-→ Verify resulting state
+The app is designed to discover a local agent on `http://127.0.0.1:8787` (or the saved endpoint), then call the real AEGIS endpoints:
 
-The frontend is a control and observation surface.
+- `GET /network/state`
+- `GET /transport/providers`
+- `POST /transport/establish`
+- `POST /transport/verify`
+- `POST /transport/rotate`
+- `POST /transport/recover`
+- `GET /events`
 
-It is NOT the authority that determines whether AEGIS is protected.
+This is intentionally a thin control surface. The browser never performs privileged system/network actions directly.
 
-Important implementation rule
+## Live app
 
-First inspect the GitHub repository and determine what is already implemented.
+- Production demo: https://aegis-net-link.lovable.app
+- Repository: https://github.com/vxssroott/aegis-net-link
+- Upstream AEGIS backend: https://github.com/vxssroott/AEGIS
 
-Reuse existing AEGIS code.
+## Features
 
-Only create a thin API adapter/control surface where necessary to expose the existing functionality to the web UI.
+### Network and boundary observation
 
-Do not rebuild AEGIS inside Lovable.
+- public identity data: IPv4, IPv6, ASN, provider, location
+- network path information: interface, local IPv4, gateway, DNS, route
+- exposure evaluation for IPv4/IPv6/DNS/route/transport boundaries
+- verification fabric and protection-state reporting driven by AEGIS evidence
 
-Do not duplicate the network engine.
+### Real control-plane actions
 
-Do not create a second source of truth.
+- connect / establish transport
+- verify transport health
+- rotate transport
+- recover / disconnect from protected boundary
+- live event stream polling from the AEGIS agent
 
-The final result should be:
+### Agent discovery and resilience
 
-EXISTING AEGIS ENGINE
-+
-EXISTING AEGIS CONTRACTS/PROVIDERS
-+
-THIN HTTP CONTROL/API SURFACE
-+
-EXISTING AEGIS UI
+- automatic endpoint discovery for a running local AEGIS control plane
+- saved API base in browser storage
+- graceful offline and unavailable-state handling without fake status fabrication
 
-The UI should look the same.
+## Project structure
 
-The backend should be the real AEGIS backend.
+```text
+.
+├── control-plane/              # PowerShell control plane contract/adapter guidance
+├── public/                     # static assets
+├── src/
+│   ├── core/aegis/             # runtime, policy, verification, state, sources
+│   ├── lib/                   # AEGIS API client and shared types
+│   ├── routes/                # TanStack route tree (app shell and dashboard)
+│   ├── router.tsx
+│   ├── server.ts
+│   ├── start.ts
+│   ├── styles.css
+│   └── styles/
+├── AGENTS.md
+├── README.md
+├── bun.lock
+├── bunfig.toml
+├── components.json
+├── eslint.config.js
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── LICENSE (if present in repo)
+```
 
-The displayed state should come from actual AEGIS state.
+## Getting started
 
-This project was built with [Lovable](https://lovable.dev).
+### Prerequisites
 
-**Live app**: https://aegis-net-link.lovable.app
+- Node.js 20+
+- npm or Bun
+- a running AEGIS agent/control plane exposing the expected HTTP endpoints locally
 
-## Build with Lovable
+### Install and run
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/4fad43db-fec5-4ca0-80ac-c6b2451a4fea).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+```bash
+git clone https://github.com/vxssroott/aegis-net-link.git
+cd aegis-net-link
+npm install
 npm run dev
 ```
+
+Then open the local Vite app and ensure the AEGIS agent is running on the expected loopback port.
+
+### Local AEGIS control-plane setup
+
+The control plane must run on the same machine as the protected network stack, because privileged operations remain on the backend side. The examples in this repo assume an AEGIS backend running on `http://127.0.0.1:8787`.
+
+```powershell
+git clone https://github.com/vxssroott/AEGIS.git
+# point the control plane to the AEGIS root and expose it locally
+pwsh -File .\control-plane\Aegis.ControlApi.ps1 `
+  -AegisRoot C:\path\to\AEGIS `
+  -Prefix http://127.0.0.1:8787/
+```
+
+Once the agent is available, the UI auto-discovers it and binds to the API automatically.
+
+## Architecture
+
+```text
+Browser UI (React + TanStack)
+    ↓
+AEGIS Control API (PowerShell / local loopback)
+    ↓
+AegisUiControlPlaneContract
+    ↓
+AEGIS Network / Platform / Provider Contracts
+    ↓
+TransportProviderRegistry + Providers
+    ↓
+Actual transport verification and platform operations
+```
+
+This project intentionally keeps the backend authoritative. The frontend is a control/observation surface, not a second source of truth.
+
+## Design principles
+
+- no fake transport providers
+- no simulated network state
+- no hardcoded protection states
+- no synthetic dashboard-only UX for network status
+- no bypass of the backend/control-plane architecture
+- preserve the existing AEGIS interface and operational semantics
+
+## Development notes
+
+The current implementation is already structured around a runtime model and policy-driven state evaluation, with logic under `src/core/aegis` for:
+
+- observation
+- state transitions
+- boundary checks
+- verification evidence
+- operator actions
+- eventing and runtime state
+
+This is the right place to extend behavior without breaking the AEGIS contract model.
+
+## Contributing
+
+Contributions are welcome if they improve the end-to-end AEGIS integration without changing the control-plane semantics. Please keep the UI aligned with the existing AEGIS design and avoid fabricating backend behavior.
+
+## License
+
+This repository is distributed under its existing project license, if present in the repo root. Please see the repository contents for the applicable license file before publishing or distributing forks.
+
+## Status
+
+Production-ready UI layer for a live AEGIS control plane, with runtime discovery, state observation, provider reporting, and action execution wired to the actual backend contract.
+
+---
+
+Built for the AEGIS privacy control plane. Designed to remain thin, real, and operational.
