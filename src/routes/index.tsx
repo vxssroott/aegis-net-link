@@ -341,8 +341,9 @@ function Aegis() {
   }
 
   useEffect(() => {
-    if (!startedRef.current) {
+    if (!aegisStarted) {
       // StrictMode double-mount guard: initialize once.
+      aegisStarted = true;
       startedRef.current = true;
       setApiBaseValue(getApiBase());
       addNotice("AEGIS interface initialized.");
