@@ -107,6 +107,10 @@ interface UiEvent {
 
 /* ---------------------------------------------------------------- component */
 
+// Module-level guard: React StrictMode remounts create fresh refs, so a ref
+// alone cannot prevent duplicate startup work. This survives remounts.
+let aegisStarted = false;
+
 function Aegis() {
   const [state, setState] = useState<AegisState | null>(null);
   const [providers, setProviders] = useState<AegisProvider[] | null>(null);
