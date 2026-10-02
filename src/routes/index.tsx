@@ -12,7 +12,8 @@ import {
   type AegisState,
 } from "@/lib/aegis-control-plane";
 import { AegisCoreRuntime, type RuntimeSnapshot } from "@/core/aegis/runtime";
-import { connectivitySource, controlPlaneSource } from "@/core/aegis/sources";
+import { connectivitySource, controlPlaneSource, serverEgressSource, webrtcSource } from "@/core/aegis/sources";
+import { observeEgress } from "@/lib/egress.functions";
 import { CapabilityManager, localCapabilityStorage } from "@/core/aegis/capability";
 import "@/styles/aegis.css";
 
@@ -191,6 +192,12 @@ function Aegis() {
       const runtime = new AegisCoreRuntime(
         [
           connectivitySource(() => navigator.onLine),
+          serverEgressSource(async () => {
+            const e = (await observeEgress()) as Record<string, unknown>;
+            setServerEgress(e);
+            return e;
+          }),
+          webrtcSource(),
           controlPlaneSource(async () => {
             try {
               const next = await aegisApi<AegisState>(AEGIS_ENDPOINTS.state);
