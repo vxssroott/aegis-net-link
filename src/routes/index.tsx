@@ -130,8 +130,6 @@ function Aegis() {
   const snapshotRef = useRef<RuntimeSnapshot | null>(null);
   const [step, setStep] = useState("");
   const [serverEgress, setServerEgress] = useState<Record<string, unknown> | null>(null);
-  const [serverEgress, setServerEgress] = useState<Record<string, unknown> | null>(null);
-  const se = (k: string) => (serverEgress?.[k] == null ? null : String(serverEgress[k]));
   const se = (k: string) => (serverEgress?.[k] == null ? null : String(serverEgress[k]));
   const [agentBase, setAgentBase] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
