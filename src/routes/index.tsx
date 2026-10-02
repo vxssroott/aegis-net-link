@@ -12,7 +12,8 @@ import {
   type AegisState,
 } from "@/lib/aegis-control-plane";
 import { AegisCoreRuntime, type RuntimeSnapshot } from "@/core/aegis/runtime";
-import { connectivitySource, controlPlaneSource } from "@/core/aegis/sources";
+import { connectivitySource, controlPlaneSource, serverEgressSource, webrtcSource } from "@/core/aegis/sources";
+import { observeEgress } from "@/lib/egress.functions";
 import { CapabilityManager, localCapabilityStorage } from "@/core/aegis/capability";
 import "@/styles/aegis.css";
 
@@ -128,6 +129,8 @@ function Aegis() {
   const startedRef = useRef(false);
   const snapshotRef = useRef<RuntimeSnapshot | null>(null);
   const [step, setStep] = useState("");
+  const [serverEgress, setServerEgress] = useState<Record<string, unknown> | null>(null);
+  const se = (k: string) => (serverEgress?.[k] == null ? null : String(serverEgress[k]));
   const [agentBase, setAgentBase] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -191,6 +194,12 @@ function Aegis() {
       const runtime = new AegisCoreRuntime(
         [
           connectivitySource(() => navigator.onLine),
+          serverEgressSource(async () => {
+            const e = (await observeEgress()) as Record<string, unknown>;
+            setServerEgress(e);
+            return e;
+          }),
+          webrtcSource(),
           controlPlaneSource(async () => {
             try {
               const next = await aegisApi<AegisState>(AEGIS_ENDPOINTS.state);
@@ -387,7 +396,7 @@ function Aegis() {
           <div className="hero-state">{heroState}</div>
 
           <div className="hero-ip">
-            {state ? text(identity.ipv4 ?? "identity unavailable") : "discovering external identity..."}
+            {identity.ipv4 ?? se("ip") ?? (state ? "identity unavailable" : "discovering external identity...")}
           </div>
 
           <div className="hero-step">{step}</div>
@@ -409,27 +418,27 @@ function Aegis() {
 
             <div className="row">
               <span className="label">IPv4</span>
-              <span className="value">{text(identity.ipv4)}</span>
+              <span className="value">{text(identity.ipv4 ?? (se("family") === "ipv4" ? se("ip") : null))}</span>
             </div>
 
             <div className="row">
               <span className="label">IPv6</span>
-              <span className="value">{text(identity.ipv6)}</span>
+              <span className="value">{text(identity.ipv6 ?? (se("family") === "ipv6" ? se("ip") : null))}</span>
             </div>
 
             <div className="row">
               <span className="label">ASN</span>
-              <span className="value">{text(identity.asn)}</span>
+              <span className="value">{text(identity.asn ?? (se("asn") ? `AS${se("asn")}` : null))}</span>
             </div>
 
             <div className="row">
               <span className="label">Provider</span>
-              <span className="value">{text(identity.provider)}</span>
+              <span className="value">{text(identity.provider ?? (se("asOrganization")))}</span>
             </div>
 
             <div className="row">
               <span className="label">Location</span>
-              <span className="value">{text(identity.location)}</span>
+              <span className="value">{text(identity.location ?? ([se("region"), se("country")].filter(Boolean).join(", ") || null))}</span>
             </div>
           </section>
 

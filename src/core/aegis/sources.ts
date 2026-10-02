@@ -104,6 +104,65 @@ export function controlPlaneSource(fetchState: () => Promise<Json>): Observation
   };
 }
 
+/** Server-side egress observation: the address traffic actually leaves from. */
+export function serverEgressSource(fetchEgress: () => Promise<Json>): ObservationSource {
+  return {
+    id: "source.server-egress",
+    kind: "EXTERNAL_SERVICE",
+    requires: [],
+    async collect() {
+      try {
+        const e = await fetchEgress();
+        const field = (k: string, key: string) =>
+          e[k] == null
+            ? unknown("EGRESS", key, "server:egress", `${k} not reported`, "EXTERNAL_SERVICE")
+            : observe({ category: "EGRESS", key, source: "EXTERNAL_SERVICE", method: "server:egress", value: e[k], confidence: "HIGH", handling: ["OBSERVED_BY_SERVER"], evidence: e, ttlMs: 60_000 });
+        return [
+          field("ip", e["family"] === "ipv6" ? "egress.server.ipv6" : "egress.server.ipv4"),
+          field("asn", "egress.server.asn"),
+          field("asOrganization", "egress.server.org"),
+          field("country", "egress.server.country"),
+        ];
+      } catch (error) {
+        return [unknown("EGRESS", "egress.server.ipv4", "server:egress", (error as Error).message, "EXTERNAL_SERVICE")];
+      }
+    },
+  };
+}
+
+/** WebRTC exposure: which non-host addresses the browser reveals via ICE. */
+export function webrtcSource(): ObservationSource {
+  return {
+    id: "source.webrtc",
+    kind: "BROWSER",
+    requires: [],
+    async collect() {
+      if (typeof RTCPeerConnection === "undefined") {
+        return [unknown("SOCKET", "webrtc.publicCandidates", "RTCPeerConnection", "WebRTC unavailable", "BROWSER")];
+      }
+      const found = new Set<string>();
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      try {
+        pc.createDataChannel("aegis");
+        await pc.setLocalDescription(await pc.createOffer());
+        await new Promise<void>((resolve) => {
+          const t = setTimeout(resolve, 3000);
+          pc.onicecandidate = (ev) => {
+            if (!ev.candidate) { clearTimeout(t); resolve(); return; }
+            const m = ev.candidate.candidate.match(/ ([0-9a-f.:]+) \d+ typ (\w+)/i);
+            if (m && m[2] !== "host") found.add(m[1]!);
+          };
+        });
+      } finally {
+        pc.close();
+      }
+      return [
+        observe<string[]>({ category: "SOCKET", key: "webrtc.publicCandidates", source: "BROWSER", method: "RTCPeerConnection+STUN", value: [...found], confidence: "MEDIUM", ttlMs: 60_000 }),
+      ];
+    },
+  };
+}
+
 export function connectivitySource(isOnline: () => boolean): ObservationSource {
   return {
     id: "source.connectivity",
